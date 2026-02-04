@@ -874,8 +874,21 @@ def process_api_request(request_data: Dict) -> Dict[str, Any]:
                 'extractedIntelligence': fraud_analysis.intelligence_extracted,
                 'agentNotes': ' | '.join(fraud_analysis.explanation)
             }
-            # In production, send HTTP POST to https://hackathon.guvi.in/api/updateHoneyPotFinalResult
-            print(f"Would send callback: {json.dumps(callback_payload, indent=2)}")
+            
+            # Send HTTP POST to https://hackathon.guvi.in/api/updateHoneyPotFinalResult
+            try:
+                import urllib.request
+                import json
+                
+                url = "https://hackathon.guvi.in/api/updateHoneyPotFinalResult"
+                headers = {'Content-Type': 'application/json'}
+                data = json.dumps(callback_payload).encode('utf-8')
+                
+                req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+                with urllib.request.urlopen(req) as resp:
+                    print(f"Callback sent successfully: {resp.status}")
+            except Exception as e:
+                print(f"Failed to send callback: {e}")
     
     return response
 
