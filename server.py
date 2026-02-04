@@ -171,10 +171,16 @@ async def honeypot_endpoint(request: Request):
         print("AI error:", e)
         reply = "Message appears legitimate"
 
+# ... existing honeypot endpoint ...
     return {
         "status": "success",
         "reply": reply
     }
+
+# FALLBACK: Handle POST at root "/" in case user inputs wrong URL in tester
+@app.post("/")
+async def root_honeypot_fallback(request: Request):
+    return await honeypot_endpoint(request)
 
 @app.get("/")
 def health_check():
