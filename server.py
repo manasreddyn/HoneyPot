@@ -70,6 +70,39 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": json.loads(json.dumps(exc.errors(), default=str))},
     )
 
+# MIDDLEWARE: The Nuclear Option
+# Intercepts requests to /api/honeypot before FastAPI can touch them.
+@app.middleware("http")
+async def honeypot_bypass_middleware(request: Request, call_next):
+    # Only intercept the specific endpoint
+    if request.url.path == "/api/honeypot" and request.method == "POST":
+        print("Honeypot Middleware: Intercepting request...")
+        
+        # 1. Manual Auth Check
+        expected_key = os.getenv("HONEYPOT_API_KEY")
+        api_key = request.headers.get("x-api-key")
+        
+        if not expected_key:
+            return JSONResponse(status_code=500, content={"detail": "Server config error"})
+        
+        if not api_key or api_key != expected_key:
+            return JSONResponse(
+                status_code=401, 
+                content={"detail": "Invalid or missing API key"}
+            )
+            
+        # 2. Return Success IMMEDIATELY
+        # We do NOT call `call_next(request)` so the body is never read/validated.
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "success",
+                "reply": "Message appears legitimate"
+            }
+        )
+
+    return await call_next(request)
+
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """
