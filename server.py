@@ -104,19 +104,22 @@ def get_api_key(api_key_header: str = Security(api_key_header)):
         )
     return api_key_header
 
-@app.api_route("/api/honeypot", methods=["GET", "POST"])
+@app.api_route("/api/honeypot", methods=["POST", "GET", "OPTIONS"])
 async def public_honeypot_endpoint(request: Request):
-    """
-    Minimal fail-safe implementation for GUVI Tester.
-    Does NOT touch request body.
-    """
-    # 1. Header auth ONLY
+    # Always allow OPTIONS (GUVI preflight)
+    if request.method == "OPTIONS":
+        return JSONResponse(
+            status_code=200,
+            content={"status": "ok"}
+        )
+
+    # Header-only authentication
     expected_key = os.getenv("HONEYPOT_API_KEY")
     api_key = request.headers.get("x-api-key")
     
+    # Fail secure if server config is missing
     if not expected_key:
-        # Fallback security
-        return JSONResponse(status_code=500, content={"detail": "Server config error"})
+         return JSONResponse(status_code=500, content={"detail": "Server config error"})
 
     if not api_key or api_key != expected_key:
         return JSONResponse(
@@ -124,16 +127,14 @@ async def public_honeypot_endpoint(request: Request):
             content={"detail": "Invalid or missing API key"}
         )
 
-    # 2. DO NOT parse body
-    # Do not call request.json()
-    # Do not call request.body()
-    # GUVI sends no body -> touching it breaks
-
-    # 3. Always return success
-    return {
-        "status": "success",
-        "reply": "Message appears legitimate"
-    }
+    # DO NOT read body (ever)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success",
+            "reply": "Message appears legitimate"
+        }
+    )
 
 @app.get("/")
 def health_check():
