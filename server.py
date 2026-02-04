@@ -11,12 +11,6 @@ import sys
 import os
 import time
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from typing import List, Dict, Any, Optional
-import uvicorn
-import json
-import sys
-import os
-import time
 
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
