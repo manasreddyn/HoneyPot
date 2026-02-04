@@ -107,9 +107,8 @@ def get_api_key(api_key_header: str = Security(api_key_header)):
     return api_key_header
 
 @app.api_route("/api/honeypot", methods=["GET", "POST", "OPTIONS"])
-async def public_honeypot_endpoint(request: Request):
+def honeypot(x_api_key: Optional[str] = Header(None, alias="x-api-key")):
     expected_key = os.getenv("HONEYPOT_API_KEY")
-    api_key = request.headers.get("x-api-key")
 
     if not expected_key:
         return JSONResponse(
@@ -117,15 +116,11 @@ async def public_honeypot_endpoint(request: Request):
             content={"detail": "Server Misconfiguration"}
         )
 
-    if api_key != expected_key:
-        return JSONResponse(
-            status_code=401,
-            content={"detail": "Invalid or missing API key"}
-        )
-
-    # DO NOT read body
-    # DO NOT parse JSON
-    # DO NOT validate anything
+    if x_api_key != expected_key:
+        # User requested raise HTTPException, but keeping JSONResponse consistency is often safer? 
+        # User explicitly wrote: raise HTTPException(status_code=401, detail="Invalid API Key")
+        # I will follow strictly.
+        raise HTTPException(status_code=401, detail="Invalid API Key")
 
     return JSONResponse(
         status_code=200,
