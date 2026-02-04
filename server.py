@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Security, Depends, status, Request, Header
+from fastapi import FastAPI, HTTPException, Security, Depends, status, Request, Header, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -106,28 +106,29 @@ def get_api_key(api_key_header: str = Security(api_key_header)):
 
 @app.api_route("/api/honeypot", methods=["POST", "GET", "OPTIONS"])
 async def public_honeypot_endpoint(request: Request):
-    # Always allow OPTIONS (GUVI preflight)
+    # Allow GUVI preflight
     if request.method == "OPTIONS":
-        return JSONResponse(
-            status_code=200,
-            content={"status": "ok"}
-        )
+        return Response(status_code=200)
 
-    # Header-only authentication
     expected_key = os.getenv("HONEYPOT_API_KEY")
     api_key = request.headers.get("x-api-key")
-    
-    # Fail secure if server config is missing
-    if not expected_key:
-         return JSONResponse(status_code=500, content={"detail": "Server config error"})
 
-    if not api_key or api_key != expected_key:
+    if not expected_key:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Server Misconfiguration"}
+        )
+
+    if api_key != expected_key:
         return JSONResponse(
             status_code=401,
             content={"detail": "Invalid or missing API key"}
         )
 
-    # DO NOT read body (ever)
+    # 🚫 DO NOT read request.body()
+    # 🚫 DO NOT access request.json()
+    # 🚫 DO NOT use Pydantic models
+
     return JSONResponse(
         status_code=200,
         content={
