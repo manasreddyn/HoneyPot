@@ -109,75 +109,49 @@ async def honeypot_endpoint(request: Request):
     # ---------------------------
     # 1. API KEY (HEADER OR QUERY)
     # ---------------------------
-    HONEYPOT_API_KEY = os.getenv("HONEYPOT_API_KEY") # Corrected env var name
+    expected_key = os.getenv("HONEYPOT_API_KEY")
+
     api_key = (
         request.headers.get("x-api-key")
         or request.query_params.get("x-api-key")
     )
 
-    if not HONEYPOT_API_KEY:
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error", "reply": "Server misconfiguration"}
-        )
-
-    if api_key != HONEYPOT_API_KEY:
+    if api_key != expected_key:
         return JSONResponse(
             status_code=401,
-            content={"status": "error", "reply": "Unauthorized"}
+            content={"detail": "Invalid API Key"}
         )
 
     # ---------------------------
-    # 2. SAFE BODY PARSING
+    # 2. SAFE BODY HANDLING (NO request.json())
     # ---------------------------
-    try:
-        payload = await request.json()
-    except:
-        payload = {}
+    raw_body = await request.body()
+    payload = {}
+    text = ""
 
-    if not isinstance(payload, dict):
-        payload = {}
+    if raw_body:
+        try:
+            payload = json.loads(raw_body.decode())
+            if isinstance(payload, dict):
+                message = payload.get("message", {})
+                if isinstance(message, dict):
+                    text = message.get("text", "")
+        except Exception:
+            pass
 
-    message = payload.get("message", {})
-    if not isinstance(message, dict):
-        message = {}
-        
-    text = message.get("text", "")
-    # Fallback if text is at root
-    if not text and "text" in payload:
-        text = str(payload["text"])
-    
     text = text.strip()
 
     # ---------------------------
-    # 3. GUVI-COMPLIANT RESPONSES
+    # 3. GUVI-COMPLIANT RESPONSE
     # ---------------------------
     if not text:
-        return {
-            "status": "success",
-            "reply": "I'm not sure what this message is regarding. Can you please clarify?"
-        }
-
-    # ---------------------------
-    # 4. AI LOGIC (Restored)
-    # ---------------------------
-    try:
-        # Reconstruct data if needed
-        data = payload
-        if 'message' not in data:
-             data['message'] = {'text': text, 'sender': 'unknown'}
-             
-        if 'sessionId' not in data:
-             data['sessionId'] = "session_" + str(int(time.time()))
-             
-        if 'timestamp' not in data['message']:
-             data['message']['timestamp'] = int(time.time() * 1000)
-
-        result = process_api_request(data)
-        reply = result.get("reply", "Message appears legitimate")
-    except Exception as e:
-        print(f"Error processing honeypot logic: {e}")
-        reply = "Message appears legitimate"
+        reply = "I'm not sure what this message is regarding. Could you please clarify?"
+    else:
+        try:
+            result = process_api_request(payload)
+            reply = result.get("reply", "Message appears legitimate")
+        except Exception:
+            reply = "Message appears legitimate"
 
     return {
         "status": "success",
