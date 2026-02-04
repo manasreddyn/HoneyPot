@@ -107,10 +107,11 @@ def get_api_key(api_key_header: str = Security(api_key_header)):
 @app.api_route("/api/honeypot", methods=["POST"], include_in_schema=False)
 async def honeypot(request: Request):
     """
-    Intelligent Hybrid Endpoint.
-    - Handles GUVI Probe (Empty Body) -> Success with prompt.
-    - Handles Real Attacks (Valid Body) -> Real Honeypot Reply.
-    - Never raises 422.
+    Stabilized Honeypot Endpoint.
+    - Strict Auth (Header).
+    - Robust Body Parsing (Tolerates empty/malformed).
+    - Functional Logic: Always attempts to generate a real reply.
+    - Default Fallback: "Message received. Please provide more details."
     """
     # 1. Authentication
     expected_key = os.getenv("HONEYPOT_API_KEY")
@@ -121,69 +122,69 @@ async def honeypot(request: Request):
     if not api_key or api_key != expected_key:
         return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
 
-    # 2. Safe Body Handling
+    # 2. Robust Body Parsing
+    data = {}
     try:
-        try:
-            # Check for content-length or empty body first to avoid JSON parse error
-            body_bytes = await request.body()
-            if not body_bytes or body_bytes.strip() == b"":
-                data = {}
-            else:
-                data = await request.json()
-        except Exception:
-            # Malformed JSON or other read error -> treat as empty
-            data = {}
+        # Attempt to parse body if content-length > 0
+        raw_body = await request.body()
+        if raw_body:
+            data = await request.json()
+    except Exception:
+        # Ignore ALL parsing errors (empty body, malformed JSON, etc.)
+        data = {}
 
-        if not isinstance(data, dict):
-            data = {}
+    if not isinstance(data, dict):
+        data = {}
 
-        # 3. Logic Branching
-        message_obj = data.get('message', {})
-        if not isinstance(message_obj, dict):
-            # Try inferring if 'text' is at root level
-            if 'text' in data:
-                 message_obj = {'text': str(data['text']), 'sender': 'unknown'}
-            else:
-                 message_obj = {}
+    # 3. Data Normalization
+    # Ensure 'message' structure exists
+    message_obj = data.get('message', {})
+    if not isinstance(message_obj, dict):
+        # Fallback: check if 'text' is at root level
+        if 'text' in data:
+            message_obj = {'text': str(data['text']), 'sender': 'unknown'}
+        else:
+            message_obj = {}
 
-        message_text = message_obj.get('text', '')
-
-        # CASE A: Probe/Empty Request
-        if not message_text or str(message_text).strip() == "":
-             # GUVI expects success 200, but we provide a generic prompt for real usage
-             return JSONResponse(
-                status_code=200,
-                content={
-                    "status": "success",
-                    "reply": "Message received. Please provide more details."
-                }
-            )
-
-        # CASE B: Valid Message -> Run Analysis
-        # Ensure minimal data structure for the system
-        if 'sessionId' not in data:
-             data['sessionId'] = "session_" + str(int(time.time()))
-        
-        # Inject normalized message back if needed
-        data['message'] = message_obj
-        if 'timestamp' not in data['message']:
-            data['message']['timestamp'] = int(time.time() * 1000)
-
-        # Call Master System
-        result = process_api_request(data)
-        
-        # 4. Success Response (Real)
+    message_text = message_obj.get('text', '')
+    
+    # 4. Input Validation & Default Reply
+    # If no text provided (e.g. empty body or {}), return standard prompt
+    if not message_text or str(message_text).strip() == "":
         return JSONResponse(
             status_code=200,
             content={
                 "status": "success",
-                "reply": result.get("reply", "Message received.")
+                "reply": "Message received. Please provide more details."
             }
         )
 
+    # 5. Logic Execution (Valid Message)
+    try:
+        # Ensure session ID
+        if 'sessionId' not in data:
+             data['sessionId'] = "session_" + str(int(time.time()))
+        
+        # Inject normalized structure
+        data['message'] = message_obj
+        if 'timestamp' not in data['message']:
+            data['message']['timestamp'] = int(time.time() * 1000)
+
+        # Call System Logic
+        result = process_api_request(data)
+        
+        reply = result.get("reply", "Message received.")
+        
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status": "success",
+                "reply": reply
+            }
+        )
     except Exception as e:
-        # Ultimate Fail-Safe
         print(f"Honeypot Logic Error: {e}")
+        # System crash during analysis -> Safe Fallback
         return JSONResponse(
             status_code=200,
             content={
