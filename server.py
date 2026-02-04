@@ -104,7 +104,7 @@ def get_api_key(api_key_header: str = Security(api_key_header)):
         )
     return api_key_header
 
-@app.api_route("/api/honeypot", methods=["*"])
+@app.api_route("/api/honeypot", methods=["POST"])
 async def public_honeypot_endpoint(request: Request):
     expected_key = os.getenv("HONEYPOT_API_KEY")
     api_key = request.headers.get("x-api-key")
@@ -120,6 +120,9 @@ async def public_honeypot_endpoint(request: Request):
             status_code=401,
             content={"detail": "Invalid or missing API key"}
         )
+
+    # IMPORTANT:
+    # Do NOT read or parse request body in any way
 
     return JSONResponse(
         status_code=200,
