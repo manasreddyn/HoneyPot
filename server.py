@@ -104,12 +104,8 @@ def get_api_key(api_key_header: str = Security(api_key_header)):
         )
     return api_key_header
 
-@app.api_route("/api/honeypot", methods=["POST", "GET", "OPTIONS"])
+@app.api_route("/api/honeypot", methods=["*"])
 async def public_honeypot_endpoint(request: Request):
-    # Allow GUVI preflight
-    if request.method == "OPTIONS":
-        return Response(status_code=200)
-
     expected_key = os.getenv("HONEYPOT_API_KEY")
     api_key = request.headers.get("x-api-key")
 
@@ -124,10 +120,6 @@ async def public_honeypot_endpoint(request: Request):
             status_code=401,
             content={"detail": "Invalid or missing API key"}
         )
-
-    # 🚫 DO NOT read request.body()
-    # 🚫 DO NOT access request.json()
-    # 🚫 DO NOT use Pydantic models
 
     return JSONResponse(
         status_code=200,
