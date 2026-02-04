@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+.DS_Store
+
+# Frontend specific
+nexus-guardian-frontend/node_modules/
+nexus-guardian-frontend/dist/
+nexus-guardian-frontend/.env

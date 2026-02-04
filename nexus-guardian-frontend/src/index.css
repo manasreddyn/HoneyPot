@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme {
+  --color-nexus-900: #0a0a0f;
+  --color-nexus-800: #13131f;
+  --color-nexus-700: #1c1c2e;
+  --color-nexus-accent: #00f0ff;
+  --color-nexus-fraud: #ff003c;
+  --color-nexus-safe: #00ff9d;
+  --color-nexus-warning: #ffd600;
+
+  --font-mono: 'Fira Code', monospace;
+  --font-sans: 'Inter', sans-serif;
+
+  --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-spin-slow: spin 3s linear infinite;
+}
+
+@layer base {
+  body {
+    @apply bg-nexus-900 text-white overflow-hidden;
+  }
+}
+
+.glass-panel {
+  @apply bg-nexus-800/80 backdrop-blur-md border border-white/10 shadow-xl;
+}
+
+.neon-border {
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.neon-text {
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.fraud-text {
+  text-shadow: 0 0 10px rgba(255, 0, 60, 0.5);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(19, 28, 46, 0.8);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.5);
+  border-radius: 5px;
+  border: 2px solid rgba(19, 28, 46, 0.8);
+  /* Creates padding effect */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.8);
+}
+
+/* Custom Scrollbar - Refined & Understated */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  /* Thin usage */
+  height: 6px;
+  display: block;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(10, 10, 15, 0.5);
+  /* Subtle track */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.2);
+  /* Muted teal */
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.5);
+  /* Slightly brighter on hover */
+}
+
+/* Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 240, 255, 0.2) rgba(10, 10, 15, 0.5);
+}
+
+/* Scroll Fade Indicator helper */
+.scroll-fade-bottom {
+  background: linear-gradient(to top, rgba(10, 10, 15, 1) 0%, transparent 100%);
+  pointer-events: none;
+}

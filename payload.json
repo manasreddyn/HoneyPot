@@ -1,0 +1,8 @@
+{
+    "sessionId": "test-123",
+    "message": {
+        "text": "Hello",
+        "sender": "user",
+        "timestamp": 123456789
+    }
+}
