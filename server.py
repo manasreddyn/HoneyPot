@@ -107,11 +107,10 @@ def get_api_key(api_key_header: str = Security(api_key_header)):
 @app.api_route("/api/honeypot", methods=["POST"], include_in_schema=False)
 async def honeypot(request: Request):
     """
-    Stabilized Honeypot Endpoint.
-    - Strict Auth (Header).
-    - Robust Body Parsing (Tolerates empty/malformed).
-    - Functional Logic: Always attempts to generate a real reply.
-    - Default Fallback: "Message received. Please provide more details."
+    Stabilized Endpoint for GUVI Compliance.
+    - Handles empty/malformed body safely.
+    - Returns conversational defaults for empty inputs.
+    - Processes real messages for conversational replies.
     """
     # 1. Authentication
     expected_key = os.getenv("HONEYPOT_API_KEY")
@@ -122,76 +121,58 @@ async def honeypot(request: Request):
     if not api_key or api_key != expected_key:
         return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
 
-    # 2. Robust Body Parsing
-    data = {}
+    # 2. Robust Body Parsing (Reference Logic)
     try:
-        # Attempt to parse body if content-length > 0
-        raw_body = await request.body()
-        if raw_body:
-            data = await request.json()
+        # Try to parse JSON directly; fail gracefully to {}
+        data = await request.json()
     except Exception:
-        # Ignore ALL parsing errors (empty body, malformed JSON, etc.)
         data = {}
 
     if not isinstance(data, dict):
         data = {}
 
-    # 3. Data Normalization
-    # Ensure 'message' structure exists
+    # 3. Extract Message Text
     message_obj = data.get('message', {})
     if not isinstance(message_obj, dict):
-        # Fallback: check if 'text' is at root level
+        # Fallback: check if 'text' is at root level (some testers do this)
         if 'text' in data:
             message_obj = {'text': str(data['text']), 'sender': 'unknown'}
         else:
             message_obj = {}
 
-    message_text = message_obj.get('text', '')
+    text = message_obj.get('text', "")
     
-    # 4. Input Validation & Default Reply
-    # If no text provided (e.g. empty body or {}), return standard prompt
-    if not message_text or str(message_text).strip() == "":
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "success",
-                "reply": "Message received. Please provide more details."
-            }
-        )
+    # 4. Logic Branching
+    if not text or str(text).strip() == "":
+        # MANDATORY DEFAULT for empty/missing input
+        reply = "I'm not sure what this message is regarding. Can you please clarify?"
+    else:
+        # Valid Message -> Run Analysis
+        try:
+            # Ensure minimal data structure for the system
+            if 'sessionId' not in data:
+                 data['sessionId'] = "session_" + str(int(time.time()))
+            
+            # Inject normalized structure
+            data['message'] = message_obj
+            if 'timestamp' not in data['message']:
+                data['message']['timestamp'] = int(time.time() * 1000)
 
-    # 5. Logic Execution (Valid Message)
-    try:
-        # Ensure session ID
-        if 'sessionId' not in data:
-             data['sessionId'] = "session_" + str(int(time.time()))
-        
-        # Inject normalized structure
-        data['message'] = message_obj
-        if 'timestamp' not in data['message']:
-            data['message']['timestamp'] = int(time.time() * 1000)
+            # Call System Logic
+            result = process_api_request(data)
+            reply = result.get("reply", "Message received.")
+        except Exception as e:
+            print(f"Logic Error: {e}")
+            reply = "I will check with my bank and get back to you."
 
-        # Call System Logic
-        result = process_api_request(data)
-        
-        reply = result.get("reply", "Message received.")
-        
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "success",
-                "reply": reply
-            }
-        )
-    except Exception as e:
-        print(f"Honeypot Logic Error: {e}")
-        # System crash during analysis -> Safe Fallback
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "success",
-                "reply": "System error. Please retry."
-            }
-        )
+    # 5. Final Response
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success",
+            "reply": reply
+        }
+    )
 
 @app.get("/")
 def health_check():
