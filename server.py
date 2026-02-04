@@ -67,7 +67,7 @@ def get_api_key(api_key_header: str = Security(api_key_header)):
         )
     return api_key_header
 
-@app.post("/api/honeypot")
+@app.api_route("/api/honeypot", methods=["GET", "POST"])
 async def public_honeypot_endpoint(request: Request, api_key: str = Security(get_api_key)):
     """
     Public, secured endpoint for external honeypot testing.
