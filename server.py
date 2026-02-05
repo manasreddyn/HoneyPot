@@ -160,6 +160,11 @@ async def honeypot_endpoint(request: Request):
         "reply": reply
     }
 
+# IMPORTANT: GUVI tester sends a trailing space (%20) in the URL
+@app.post("/api/honeypot ")
+async def honeypot_endpoint_with_space(request: Request):
+    return await honeypot_endpoint(request)
+
 # FALLBACK: Handle POST at root "/" in case user inputs wrong URL in tester
 @app.post("/")
 async def root_honeypot_fallback(request: Request):
